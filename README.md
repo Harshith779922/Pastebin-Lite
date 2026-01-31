@@ -1,8 +1,3 @@
-Below is a **submission-ready `README.md`** you can copy-paste directly into your project.
-It’s written in a **clear, professional tone** and covers exactly what reviewers expect: setup, persistence layer, and key design decisions—without overexplaining.
-
----
-
 # Pastebin Lite
 
 Pastebin Lite is a lightweight web application that allows users to create **temporary, shareable text pastes** with optional **time-to-live (TTL)** and **maximum view limits**.
