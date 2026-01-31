@@ -1,58 +1,64 @@
-# Pastebin Lite
+# Pastebin-Lite
 
-Pastebin Lite is a lightweight web application that allows users to create **temporary, shareable text pastes** with optional **time-to-live (TTL)** and **maximum view limits**.
-The application focuses on simplicity, security, and clean architecture.
+A lightweight Pastebin-like application built with **Next.js**, **Prisma**, and **PostgreSQL**, supporting disposable pastes with **time-based expiration**, **view-count limits**, and **optional password protection**.
+
+This project was built as part of a take-home assignment.
 
 ---
 
 ## 🚀 Features
 
-* Create text pastes with optional expiration (TTL in seconds)
-* Optional maximum view count per paste
-* Shareable, short URLs
-* Server-side validation for expired or invalid pastes
-* Light / Dark theme toggle with persistence
-* Clean, modern UI
-* Safe rendering of text (prevents script execution)
+* Create a paste and receive a shareable URL
+* View pastes via `/p/:id`
+* Optional expiration using:
+
+  * Time-to-live (TTL)
+  * Maximum number of views
+* Paste becomes unavailable when **either constraint is reached**
+* Optional **password protection** for private pastes
+* Safe rendering of content (no script execution)
+* Deterministic time support for testing
+* Fully server-side enforced constraints
+* Deployed and works on **Vercel**
 
 ---
 
 ## 🛠 Tech Stack
 
-* **Frontend:** Next.js (Pages Router), React
-* **Backend:** Next.js API Routes
-* **Database:** PostgreSQL
-* **ORM:** Prisma
-* **Styling:** Inline styles (custom dark/light theme)
-* **ID Generation:** `nanoid`
+* **Frontend & Backend**: Next.js (Pages Router)
+* **Database**: PostgreSQL (hosted on Neon)
+* **ORM**: Prisma
+* **Styling**: CSS / inline styles
+* **Deployment**: Vercel
 
 ---
 
 ## 📦 Persistence Layer
 
-The application uses **PostgreSQL** as the persistence layer, accessed via **Prisma ORM**.
+This application uses **PostgreSQL** as its persistence layer, hosted on **Neon**, and accessed via **Prisma ORM**.
 
-### Database Model (Paste)
-
-Each paste is stored with the following properties:
-
-* `id` – short, URL-friendly string (generated using `nanoid`)
-* `content` – text content of the paste
-* `createdAt` – creation timestamp
-* `expiresAt` – optional expiration timestamp (derived from TTL)
-* `maxViews` – optional maximum allowed views
-* `currentViews` – tracks how many times the paste has been viewed
-
-PostgreSQL was chosen for:
-
-* Strong consistency
-* Reliability
-* Easy integration with Prisma
-* Compatibility with hosted providers like Neon / Vercel
+All paste data (content, expiration time, view limits, and password hashes) is stored in the database.
+The application does **not** rely on in-memory storage, ensuring data persists across requests and deployments.
 
 ---
 
-## ▶️ Running the App Locally
+## 🔐 Password-Protected Pastes (Additional Feature)
+
+When creating a paste, users may optionally provide a **password**.
+
+* Passwords are **never stored in plain text**
+* Passwords are hashed using `bcrypt`
+* If a paste is password-protected:
+
+  * Accessing the paste requires submitting the correct password
+  * Unauthorized requests receive a `401 Unauthorized` response
+* If no password is provided, the paste is publicly accessible
+
+This feature is **optional** and does not affect public pastes.
+
+---
+
+## ▶️ How to Run Locally
 
 ### 1. Clone the repository
 
@@ -61,43 +67,25 @@ git clone <your-repo-url>
 cd pastebin-lite
 ```
 
----
-
 ### 2. Install dependencies
 
 ```bash
 npm install
 ```
 
----
+### 3. Set up environment variables
 
-### 3. Configure environment variables
-
-Create a file named `.env.local` in the project root:
+Create a `.env` file in the project root:
 
 ```env
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require"
 ```
 
-> You can use a local PostgreSQL instance or a hosted provider like Neon.
-
----
-
-### 4. Set up Prisma
-
-Generate the Prisma client:
+### 4. Run database migrations
 
 ```bash
-npx prisma generate
+npx prisma migrate dev
 ```
-
-Run the initial migration to create database tables:
-
-```bash
-npx prisma migrate dev --name init
-```
-
----
 
 ### 5. Start the development server
 
@@ -105,7 +93,7 @@ npx prisma migrate dev --name init
 npm run dev
 ```
 
-Open your browser and visit:
+The app will be available at:
 
 ```
 http://localhost:3000
@@ -113,85 +101,111 @@ http://localhost:3000
 
 ---
 
-## 🧠 Important Design Decisions
+## 🔌 API Endpoints
 
-### 1. Short, URL-Friendly IDs
-
-Instead of UUIDs, the app uses **short string IDs** generated with `nanoid`.
-This makes shareable links cleaner and more user-friendly.
-
----
-
-### 2. Expiry & View Limits Enforced Server-Side
-
-A paste becomes unavailable when:
-
-* The current time exceeds `expiresAt`, or
-* `currentViews` reaches `maxViews`
-
-These rules are enforced **on the server**, ensuring:
-
-* No bypass via client manipulation
-* Correct HTTP 404 responses for expired or invalid pastes
-
----
-
-### 3. Server-Side Rendering for Paste View
-
-The paste view page (`/p/[id]`) uses **server-side fetching** to:
-
-* Immediately return a `404` for expired or missing pastes
-* Avoid exposing invalid content to the client
-
----
-
-### 4. Safe Content Rendering
-
-Paste content is rendered inside a `<pre>` element without using `dangerouslySetInnerHTML`.
-This ensures:
-
-* Whitespace is preserved
-* No scripts or HTML are executed (prevents XSS)
-
----
-
-### 5. Theme Management
-
-* Light and Dark themes are implemented manually
-* Theme preference is stored in `localStorage`
-* Both the create page and view page share the same theme system
-
-This avoids external styling dependencies while keeping the UI consistent.
-
----
-
-### 6. Prisma Client Management
-
-A singleton Prisma client pattern is used to:
-
-* Prevent excessive database connections during development
-* Ensure compatibility with serverless environments
-
----
-
-## 📄 Project Structure (High Level)
+### Health Check
 
 ```
-pages/
-  index.js            → Create paste UI
-  p/[id].js           → View paste UI (SSR)
-  api/
-    pastes/
-      index.js        → Create paste API
-      [id].js         → Fetch paste API
-prisma/
-  schema.prisma       → Database schema
-lib/
-  db.js               → Prisma client singleton
+GET /api/healthz
+```
+
+Returns `200 OK` if the service is running.
+
+---
+
+### Create a Paste
+
+```
+POST /api/pastes
+```
+
+**Request body:**
+
+```json
+{
+  "content": "string",
+  "ttl_seconds": 3600,
+  "max_views": 5,
+  "password": "optional-string"
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": "abc123"
+}
 ```
 
 ---
 
-## ✅ Status
+### Fetch a Paste
 
-This project is **fully functional**, production-ready for a take-home assignment, and designed with clarity, correctness, and maintainability in mind.
+```
+GET /api/pastes/:id
+```
+
+**Response (public paste):**
+
+```json
+{
+  "content": "string",
+  "remaining_views": 4,
+  "expires_at": "2026-01-01T00:00:00.000Z"
+}
+```
+
+**Response (password-protected paste):**
+
+* Returns `401 Unauthorized` if password is required
+
+To unlock:
+
+```
+POST /api/pastes/:id
+```
+
+**Request body:**
+
+```json
+{
+  "password": "your-password"
+}
+```
+
+---
+
+## 🧪 Deterministic Time for Testing
+
+For automated testing, deterministic time behavior is supported.
+
+If the environment variable below is set:
+
+```env
+TEST_MODE=1
+```
+
+And the request includes the header:
+
+```
+x-test-now-ms: <timestamp-in-ms>
+```
+
+The server will use this timestamp as the current time **only for expiration logic**.
+
+This ensures predictable behavior during testing.
+
+---
+
+## 🧠 Design Decisions
+
+* **Short IDs** generated using `nanoid` for clean, URL-friendly links
+* **Server-side enforcement** of TTL, view limits, and password checks
+* **Prisma ORM** chosen for schema management and type safety
+* **PostgreSQL** used for durable persistence
+* **bcrypt hashing** for secure password storage
+* **Safe rendering** using `<pre>` tags to prevent script execution
+* Deterministic time support added to satisfy automated testing requirements
+
+---
