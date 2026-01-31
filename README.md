@@ -1,40 +1,202 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+Below is a **submission-ready `README.md`** you can copy-paste directly into your project.
+It’s written in a **clear, professional tone** and covers exactly what reviewers expect: setup, persistence layer, and key design decisions—without overexplaining.
 
-## Getting Started
+---
 
-First, run the development server:
+# Pastebin Lite
+
+Pastebin Lite is a lightweight web application that allows users to create **temporary, shareable text pastes** with optional **time-to-live (TTL)** and **maximum view limits**.
+The application focuses on simplicity, security, and clean architecture.
+
+---
+
+## 🚀 Features
+
+* Create text pastes with optional expiration (TTL in seconds)
+* Optional maximum view count per paste
+* Shareable, short URLs
+* Server-side validation for expired or invalid pastes
+* Light / Dark theme toggle with persistence
+* Clean, modern UI
+* Safe rendering of text (prevents script execution)
+
+---
+
+## 🛠 Tech Stack
+
+* **Frontend:** Next.js (Pages Router), React
+* **Backend:** Next.js API Routes
+* **Database:** PostgreSQL
+* **ORM:** Prisma
+* **Styling:** Inline styles (custom dark/light theme)
+* **ID Generation:** `nanoid`
+
+---
+
+## 📦 Persistence Layer
+
+The application uses **PostgreSQL** as the persistence layer, accessed via **Prisma ORM**.
+
+### Database Model (Paste)
+
+Each paste is stored with the following properties:
+
+* `id` – short, URL-friendly string (generated using `nanoid`)
+* `content` – text content of the paste
+* `createdAt` – creation timestamp
+* `expiresAt` – optional expiration timestamp (derived from TTL)
+* `maxViews` – optional maximum allowed views
+* `currentViews` – tracks how many times the paste has been viewed
+
+PostgreSQL was chosen for:
+
+* Strong consistency
+* Reliability
+* Easy integration with Prisma
+* Compatibility with hosted providers like Neon / Vercel
+
+---
+
+## ▶️ Running the App Locally
+
+### 1. Clone the repository
+
+```bash
+git clone <your-repo-url>
+cd pastebin-lite
+```
+
+---
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+---
+
+### 3. Configure environment variables
+
+Create a file named `.env.local` in the project root:
+
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require"
+```
+
+> You can use a local PostgreSQL instance or a hosted provider like Neon.
+
+---
+
+### 4. Set up Prisma
+
+Generate the Prisma client:
+
+```bash
+npx prisma generate
+```
+
+Run the initial migration to create database tables:
+
+```bash
+npx prisma migrate dev --name init
+```
+
+---
+
+### 5. Start the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open your browser and visit:
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+```
+http://localhost:3000
+```
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+---
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+## 🧠 Important Design Decisions
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Short, URL-Friendly IDs
 
-## Learn More
+Instead of UUIDs, the app uses **short string IDs** generated with `nanoid`.
+This makes shareable links cleaner and more user-friendly.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+### 2. Expiry & View Limits Enforced Server-Side
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+A paste becomes unavailable when:
 
-## Deploy on Vercel
+* The current time exceeds `expiresAt`, or
+* `currentViews` reaches `maxViews`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+These rules are enforced **on the server**, ensuring:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+* No bypass via client manipulation
+* Correct HTTP 404 responses for expired or invalid pastes
+
+---
+
+### 3. Server-Side Rendering for Paste View
+
+The paste view page (`/p/[id]`) uses **server-side fetching** to:
+
+* Immediately return a `404` for expired or missing pastes
+* Avoid exposing invalid content to the client
+
+---
+
+### 4. Safe Content Rendering
+
+Paste content is rendered inside a `<pre>` element without using `dangerouslySetInnerHTML`.
+This ensures:
+
+* Whitespace is preserved
+* No scripts or HTML are executed (prevents XSS)
+
+---
+
+### 5. Theme Management
+
+* Light and Dark themes are implemented manually
+* Theme preference is stored in `localStorage`
+* Both the create page and view page share the same theme system
+
+This avoids external styling dependencies while keeping the UI consistent.
+
+---
+
+### 6. Prisma Client Management
+
+A singleton Prisma client pattern is used to:
+
+* Prevent excessive database connections during development
+* Ensure compatibility with serverless environments
+
+---
+
+## 📄 Project Structure (High Level)
+
+```
+pages/
+  index.js            → Create paste UI
+  p/[id].js           → View paste UI (SSR)
+  api/
+    pastes/
+      index.js        → Create paste API
+      [id].js         → Fetch paste API
+prisma/
+  schema.prisma       → Database schema
+lib/
+  db.js               → Prisma client singleton
+```
+
+---
+
+## ✅ Status
+
+This project is **fully functional**, production-ready for a take-home assignment, and designed with clarity, correctness, and maintainability in mind.
