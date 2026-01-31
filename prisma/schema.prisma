@@ -10,12 +10,14 @@ datasource db {
 }
 
 model Paste {
-  id            String   @id @db.VarChar(32)
-  content       String   @db.Text
+  id            String   @id
+  content       String
   createdAt     DateTime @default(now())
   expiresAt     DateTime?
   maxViews      Int?
   currentViews  Int      @default(0)
+
+  passwordHash  String?  // optional password protection
 
   @@index([expiresAt])
 }

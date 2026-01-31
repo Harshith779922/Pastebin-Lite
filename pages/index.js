@@ -4,15 +4,17 @@ export default function Home() {
   const [content, setContent] = useState("");
   const [ttl, setTtl] = useState("");
   const [maxViews, setMaxViews] = useState("");
+  const [password, setPassword] = useState("");
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState("dark");
+  const [copied, setCopied] = useState(false);
 
   // Load saved theme
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) setTheme(savedTheme);
+    const saved = localStorage.getItem("theme");
+    if (saved) setTheme(saved);
   }, []);
 
   // Persist theme
@@ -34,6 +36,7 @@ export default function Home() {
           content,
           ttl_seconds: ttl ? Number(ttl) : undefined,
           max_views: maxViews ? Number(maxViews) : undefined,
+          password: password || undefined, // OPTIONAL
         }),
       });
 
@@ -44,6 +47,7 @@ export default function Home() {
       setContent("");
       setTtl("");
       setMaxViews("");
+      setPassword("");
     } catch {
       setError("Failed to create paste. Please try again.");
     } finally {
@@ -52,37 +56,22 @@ export default function Home() {
   }
 
   function copyLink() {
-  if (!link) return;
+    if (!link) return;
 
-  // Modern Clipboard API
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(link)
-      .then(() => alert("Link copied to clipboard!"))
-      .catch(() => fallbackCopy(link));
-  } else {
-    // Fallback
-    fallbackCopy(link);
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(link);
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = link;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   }
-}
-
-function fallbackCopy(text) {
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.style.position = "fixed"; // avoid scrolling
-  document.body.appendChild(textarea);
-  textarea.focus();
-  textarea.select();
-
-  try {
-    document.execCommand("copy");
-    alert("Link copied to clipboard!");
-  } catch {
-    alert("Copy failed. Please copy manually.");
-  }
-
-  document.body.removeChild(textarea);
-}
-
 
   const t = theme === "dark" ? dark : light;
 
@@ -95,7 +84,7 @@ function fallbackCopy(text) {
               Pastebin Lite
             </h1>
             <p style={{ ...styles.subtitle, color: t.subtext }}>
-              Create secure, disposable text pastes
+              Secure, disposable text sharing
             </p>
           </div>
 
@@ -119,7 +108,7 @@ function fallbackCopy(text) {
           <div style={styles.row}>
             <input
               type="number"
-              placeholder="TTL (seconds)"
+              placeholder="Time‐based expiry"
               value={ttl}
               onChange={(e) => setTtl(e.target.value)}
               style={{ ...styles.input, background: t.inputBg, color: t.text, borderColor: t.border }}
@@ -132,6 +121,14 @@ function fallbackCopy(text) {
               style={{ ...styles.input, background: t.inputBg, color: t.text, borderColor: t.border }}
             />
           </div>
+
+          <input
+            type="password"
+            placeholder="Password (optional)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ ...styles.input, background: t.inputBg, color: t.text, borderColor: t.border }}
+          />
 
           <button
             type="submit"
@@ -151,8 +148,8 @@ function fallbackCopy(text) {
               <a href={link} style={{ ...styles.link, color: t.accent }}>
                 {link}
               </a>
-              <button onClick={copyLink} style={{ ...styles.copyBtn, color: t.text }}>
-                Copy
+              <button onClick={copyLink} style={styles.copyBtn}>
+                {copied ? "Copied ✓" : "Copy"}
               </button>
             </div>
           </div>
@@ -195,7 +192,6 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     padding: "16px",
-    transition: "background 0.3s ease",
     fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
   },
 
@@ -206,7 +202,6 @@ const styles = {
     padding: "32px",
     border: "1px solid",
     boxShadow: "0 30px 80px rgba(0,0,0,0.25)",
-    transition: "all 0.3s ease",
   },
 
   header: {
@@ -242,7 +237,6 @@ const styles = {
   row: { display: "flex", gap: "12px" },
 
   input: {
-    flex: 1,
     borderRadius: "10px",
     padding: "10px 12px",
     border: "1px solid",
@@ -267,8 +261,14 @@ const styles = {
 
   resultLabel: { fontSize: "12px", marginBottom: "6px", display: "block" },
   linkRow: { display: "flex", gap: "8px", alignItems: "center" },
-  link: { textDecoration: "none", flex: 1 },
-  copyBtn: { padding: "6px 10px", borderRadius: "8px", border: "1px solid #ccc", cursor: "pointer" },
+  link: { flex: 1, wordBreak: "break-all", textDecoration: "none" },
+  copyBtn: {
+    padding: "6px 10px",
+    borderRadius: "8px",
+    border: "1px solid #ccc",
+    cursor: "pointer",
+    fontSize: "12px",
+  },
 
   error: { marginTop: "16px", color: "#ef4444" },
 };
