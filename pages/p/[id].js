@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 
-export default function PasteView({ id }) {
+export default function PasteView() {
+  const router = useRouter();
+  const { id } = router.query;
+
   const [theme, setTheme] = useState("dark");
   const [content, setContent] = useState(null);
   const [password, setPassword] = useState("");
@@ -13,11 +17,12 @@ export default function PasteView({ id }) {
     if (savedTheme) setTheme(savedTheme);
   }, []);
 
-  // Initial fetch (no password)
+  // Fetch paste when id is ready
   useEffect(() => {
+    if (!id) return;
     fetchPaste();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [id]);
 
   async function fetchPaste(pwd) {
     setLoading(true);
@@ -32,19 +37,19 @@ export default function PasteView({ id }) {
 
       if (res.status === 401) {
         setContent(null);
-        setError("Password required");
+        setError("PASSWORD_REQUIRED");
         return;
       }
 
       if (!res.ok) {
-        setError("Paste not found or expired");
+        setError("NOT_FOUND");
         return;
       }
 
       const data = await res.json();
       setContent(data.content);
     } catch {
-      setError("Failed to load paste");
+      setError("FAILED");
     } finally {
       setLoading(false);
     }
@@ -76,7 +81,7 @@ export default function PasteView({ id }) {
         </div>
 
         {/* PASSWORD REQUIRED */}
-        {content === null && error === "Password required" && (
+        {error === "PASSWORD_REQUIRED" && (
           <form onSubmit={unlockPaste} style={styles.passwordBox}>
             <p style={{ ...styles.passwordText, color: t.subtext }}>
               This paste is password protected
@@ -100,9 +105,6 @@ export default function PasteView({ id }) {
             >
               {loading ? "Unlocking…" : "Unlock Paste"}
             </button>
-            {error && error !== "Password required" && (
-              <p style={styles.error}>{error}</p>
-            )}
           </form>
         )}
 
@@ -120,23 +122,21 @@ export default function PasteView({ id }) {
           </pre>
         )}
 
-        {/* OTHER ERRORS */}
-        {!content && error && error !== "Password required" && (
-          <p style={styles.error}>{error}</p>
+        {/* ERRORS */}
+        {error === "NOT_FOUND" && (
+          <p style={styles.error}>
+            Paste not found or expired.
+          </p>
+        )}
+
+        {error === "FAILED" && (
+          <p style={styles.error}>
+            Failed to load paste.
+          </p>
         )}
       </main>
     </div>
   );
-}
-
-/* ---------- SERVER SIDE ---------- */
-
-export async function getServerSideProps({ params }) {
-  return {
-    props: {
-      id: params.id,
-    },
-  };
 }
 
 /* ---------- THEMES ---------- */

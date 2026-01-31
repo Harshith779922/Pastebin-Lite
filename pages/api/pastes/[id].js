@@ -1,46 +1,43 @@
-import pool from "@/lib/db";
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
+
+const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
   const { id } = req.query;
 
-  const result = await pool.query(
-    "SELECT * FROM pastes WHERE id = $1",
-    [id]
-  );
+  const paste = await prisma.paste.findUnique({ where: { id } });
 
-  if (result.rowCount === 0) {
+  if (!paste) {
     return res.status(404).json({ error: "Not found" });
   }
 
-  const paste = result.rows[0];
-
-  // Deterministic time support (for automated tests)
-  const now =
-    process.env.TEST_MODE === "1" && req.headers["x-test-now-ms"]
-      ? new Date(Number(req.headers["x-test-now-ms"]))
-      : new Date();
-
-  // TTL check
-  if (paste.expires_at && now > paste.expires_at) {
+  if (paste.expiresAt && paste.expiresAt < new Date()) {
     return res.status(404).json({ error: "Expired" });
   }
 
-  // View limit check
-  if (paste.remaining_views !== null) {
-    if (paste.remaining_views <= 0) {
-      return res.status(404).json({ error: "View limit exceeded" });
-    }
-
-    await pool.query(
-      "UPDATE pastes SET remaining_views = remaining_views - 1 WHERE id = $1",
-      [id]
-    );
+  if (paste.maxViews !== null && paste.currentViews >= paste.maxViews) {
+    return res.status(404).json({ error: "View limit reached" });
   }
 
-  res.status(200).json({
-    content: paste.content,
-    remaining_views:
-      paste.remaining_views !== null ? paste.remaining_views - 1 : null,
-    expires_at: paste.expires_at,
+  // PASSWORD PROTECTED
+  if (paste.passwordHash) {
+    if (req.method !== "POST") {
+      return res.status(401).json({ error: "Password required" });
+    }
+
+    const { password } = req.body;
+    const ok = await bcrypt.compare(password || "", paste.passwordHash);
+
+    if (!ok) {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+  }
+
+  await prisma.paste.update({
+    where: { id },
+    data: { currentViews: { increment: 1 } },
   });
+
+  return res.json({ content: paste.content });
 }
