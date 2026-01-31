@@ -44,24 +44,35 @@ export default function PasteView({ content }) {
   );
 }
 
-/* ---------- SERVER SIDE ---------- */
+/* ---------- SERVER SIDE (FIXED FOR VERCEL) ---------- */
 
-export async function getServerSideProps({ params }) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/pastes/${params.id}`
-  );
+export async function getServerSideProps({ req, params }) {
+  try {
+    const protocol =
+      req.headers["x-forwarded-proto"] || "http";
+    const host = req.headers.host;
 
-  if (!res.ok) {
+    const baseUrl = `${protocol}://${host}`;
+
+    const res = await fetch(
+      `${baseUrl}/api/pastes/${params.id}`
+    );
+
+    if (!res.ok) {
+      return { notFound: true };
+    }
+
+    const data = await res.json();
+
+    return {
+      props: {
+        content: data.content,
+      },
+    };
+  } catch (error) {
+    console.error("SSR error:", error);
     return { notFound: true };
   }
-
-  const data = await res.json();
-
-  return {
-    props: {
-      content: data.content,
-    },
-  };
 }
 
 /* ---------- THEMES ---------- */
